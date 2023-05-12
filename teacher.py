@@ -1,7 +1,7 @@
 from config import Vector2
+from random import randint
 import config
 import maze
-from random import randint
 import pygame
 import render
 
@@ -37,7 +37,7 @@ class Teacher:
                 directions.remove(v)
                 break
 
-        # а теперь фильтруем развилку. Длинна массива теперь количство возможных путей(отфильтровали)
+        # а теперь фильтруем развилку. Длинна массива теперь количество возможных путей(отфильтровали)
         direction = None
         if len(directions) >= 2:
             if self.forkData[0] != self.pos:

@@ -1,8 +1,15 @@
-from __future__ import annotations
-from random import *
+from typing import Optional, TypeVar
+from random import randint
+from config import Vector2
 import pygame
 import config
-from config import Vector2
+
+# Структура:
+# MazeField: {
+#   Vector2:[CELL_ID(int), CELL_FOG(bool), CELL_RAND(int), CELL_OBJ(Surface)]
+# }
+# Пример использования: MazeField[Vector2(10, 14)][CELL_ID] = ROAD
+MazeField = TypeVar('MazeField', dict[Vector2, list[int, bool, int, Optional[pygame.surface.Surface]]], None)
 
 # типы клеток в лабиринте
 EMPTY = 0  # Еще не занята. Используется в процессе генерации
@@ -21,7 +28,7 @@ directions = [
 ]
 
 
-def GetDirections(field: {Vector2: [int, bool, int, pygame.Surface | None]}, pos, neighborId, farNeighbor=True):
+def GetDirections(field: MazeField, pos, neighborId, farNeighbor=True):
     """
     Определить возможные направления относительно указанной клетки
     :param field: Пола лабиринта, в котором необходим поиск
@@ -35,20 +42,14 @@ def GetDirections(field: {Vector2: [int, bool, int, pygame.Surface | None]}, pos
     for i in range(0, 4):
         neighbor = pos + directions[i] / n
         if 0 <= neighbor.x < config.MAZE_SIZE.x and 0 <= neighbor.y < config.MAZE_SIZE.y and \
-                field[neighbor][0] == neighborId:
+                field[neighbor][CELL_ID] == neighborId:
             res.append(directions[i]/n)
     return res
 
 
-def GenerateMaze(field_size) -> {Vector2: [int, bool, int, None]}:
+def GenerateMaze(field_size) -> MazeField:
     """
     Генератор лабиринта
-    Строение клетки: [
-        тип_клетки:int,
-        туман_на_клетке:bool,
-        случайное_число_для_текстур:int,
-        объект_для_рендера:None|Surface
-    ]
     :param Vector2 field_size: Размер создаваемого лабиринта(должен быть нечетным по двум осям)
     :returns: Массив с созданным лабиринтом
     """
@@ -81,7 +82,8 @@ def GenerateMaze(field_size) -> {Vector2: [int, bool, int, None]}:
             # определяем можем ли мы вообще от сюда продолжить змейку
             for i in range(0, 4):
                 near_pos = pos + directions[i]
-                if field_size.x > near_pos.x >= 0 and field_size.y > near_pos.y >= 0 and field[near_pos][0] == EMPTY:
+                if field_size.x > near_pos.x >= 0 and field_size.y > near_pos.y >= 0 \
+                        and field[near_pos][CELL_ID] == EMPTY:
                     can_move = True
                     break
 
@@ -117,8 +119,8 @@ def GenerateMaze(field_size) -> {Vector2: [int, bool, int, None]}:
         dirs = GetDirections(field, pos, EMPTY)
 
         cur_dir = dirs[randint(0, len(dirs) - 1)]
-        field[pos + cur_dir][0] = ROAD
-        field[pos + cur_dir / 2][0] = ROAD
+        field[pos + cur_dir][CELL_ID] = ROAD
+        field[pos + cur_dir / 2][CELL_ID] = ROAD
         pos = pos + cur_dir
 
     return field

@@ -2,6 +2,7 @@ import pygame
 import maze
 import config
 from config import Vector2
+from typing import Optional
 
 # инициализация библиотек
 pygame.font.init()
@@ -21,8 +22,7 @@ LTYPE_QUESTION = 2
 LTYPE_PAUSE = 3
 
 surface = pygame.display.set_mode(config.SCREEN_SIZE)
-field: {Vector2: [int, bool, int, None]} = None
-textures = None
+field: Optional[maze.MazeField] = None
 
 
 class Label:

@@ -1,4 +1,3 @@
-from __future__ import annotations  # для указания типов X|Y (мой питон говорит так незя, только так)
 import random
 import time
 import pygame
@@ -8,6 +7,7 @@ import render
 import config
 import teacher
 from config import Vector2
+from typing import Optional
 
 # идентификация активного окна
 WINDOW_MAIN_MENU = 0
@@ -26,12 +26,12 @@ peaceFrames = 0  # счетчик кадров мирного режима
 questions = config.QUESTIONS.copy()  # массив с вопросами
 
 # переменные без значений по умолчанию(None, пустые массивы)
-prevWindow = None  # предыдущее активное окно
-currentQuestion: str | None = None  # текущая формулировка вопроса(идентификация при рендере и ответе на вопрос)
-npc: teacher.Teacher | None = None  # будущий объект NPC
-mousePos: tuple[int, int] | None = None  # позиция мыши для вычислений
-hoverButton: list[render.Label] | None = None  # текущая кнопка, на которой находится мышь
-prevHoverButton = None  # предыдущая кнопка, на которой находилась мышь
+prevWindow: Optional[int] = None  # предыдущее активное окно
+currentQuestion: Optional[str] = None  # текущая формулировка вопроса(идентификация при рендере и ответе на вопрос)
+npc: Optional[teacher.Teacher] = None  # будущий объект NPC
+mousePos: Optional[tuple[int, int]] = None  # позиция мыши для вычислений
+hoverButton: Optional[list[render.Label]] = None  # текущая кнопка, на которой находится мышь
+prevHoverButton: Optional[list[render.Label]] = None  # предыдущая кнопка, на которой находилась мышь
 
 # интерфейс
 mainMenuButtons = ["Новая игра", "Настройки", "Выход"]
@@ -48,8 +48,8 @@ UI_pauseLabel = render.Label(text="Пауза",  # большая надпись
                                  - Vector2(render.FONT_TITLE.size("Пауза")) / 2
                                  - Vector2(0, (1 + int(len(pauseButtons) / 2)) * 30),
                              color=(255, 255, 255), font=render.FONT_TITLE, LType=render.LTYPE_PAUSE)
-ui_question: render.Label | None = None  # объект надписи вопроса
-ui_answers: list[list[render.Label]] | [] = []  # объекты надписей ответов
+ui_question: Optional[render.Label] = None  # объект надписи вопроса
+ui_answers: list[list[render.Label]] = []  # объекты надписей ответов
 
 # Главное меню: кнопки
 for i in range(0, len(mainMenuButtons)):
