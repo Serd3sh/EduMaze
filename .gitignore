@@ -1,3 +1,5 @@
 /venv/
 /assets/
 /sounds/
+/.idea/
+/__pycache__/
