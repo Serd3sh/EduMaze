@@ -1,15 +1,12 @@
-from typing import Optional, TypeVar
-from random import randint
-from config import Vector2
-import pygame
 import config
+from renderProxy import *
+from typing import Optional, NewType
+from random import randint
 
-# Структура:
-# MazeField: {
-#   Vector2:[CELL_ID(int), CELL_FOG(bool), CELL_RAND(int), CELL_OBJ(Surface)]
-# }
-# Пример использования: MazeField[Vector2(10, 14)][CELL_ID] = ROAD
-MazeField = TypeVar('MazeField', dict[Vector2, list[int, bool, int, Optional[pygame.surface.Surface]]], None)
+MazeField = NewType("MazeField", dict[Vector2, list[int, bool, int, Optional[Texture]]])
+"""
+Позиция(Vector2): [ Тип_клетки(int), туман(bool), рандом_число(int), текстура(render.Texture) ]
+"""
 
 # типы клеток в лабиринте
 EMPTY = 0  # Еще не занята. Используется в процессе генерации
@@ -22,7 +19,7 @@ CELL_RAND = 2
 CELL_OBJ = 3
 
 # массив с направлениями для удобного циклического выбора
-directions = [
+DIRECTIONS = [
     Vector2(-2, 0), Vector2(0, -2),
     Vector2(2, 0), Vector2(0, 2)
 ]
@@ -40,10 +37,10 @@ def GetDirections(field: MazeField, pos, neighborId, farNeighbor=True):
     res = []
     n = 1 if farNeighbor else 2
     for i in range(0, 4):
-        neighbor = pos + directions[i] / n
+        neighbor = pos + DIRECTIONS[i] / n
         if 0 <= neighbor.x < config.MAZE_SIZE.x and 0 <= neighbor.y < config.MAZE_SIZE.y and \
                 field[neighbor][CELL_ID] == neighborId:
-            res.append(directions[i]/n)
+            res.append(DIRECTIONS[i] / n)
     return res
 
 
@@ -53,7 +50,7 @@ def GenerateMaze(field_size) -> MazeField:
     :param Vector2 field_size: Размер создаваемого лабиринта(должен быть нечетным по двум осям)
     :returns: Массив с созданным лабиринтом
     """
-    field = {}
+    field: MazeField = MazeField({})
     incomplete_roads = []
 
     # создаем пустую сетку, от которой будет идти генерация
@@ -81,7 +78,7 @@ def GenerateMaze(field_size) -> MazeField:
 
             # определяем можем ли мы вообще от сюда продолжить змейку
             for i in range(0, 4):
-                near_pos = pos + directions[i]
+                near_pos = pos + DIRECTIONS[i]
                 if field_size.x > near_pos.x >= 0 and field_size.y > near_pos.y >= 0 \
                         and field[near_pos][CELL_ID] == EMPTY:
                     can_move = True

@@ -1,13 +1,11 @@
-import random
-import time
-import pygame
 import maze
-import sound
 import render
-import config
+import sound
 import teacher
-from config import Vector2
-from typing import Optional
+import time
+import config
+from random import randint
+from renderProxy import *
 
 # идентификация активного окна
 WINDOW_MAIN_MENU = 0
@@ -30,8 +28,8 @@ prevWindow: Optional[int] = None  # предыдущее активное окн
 currentQuestion: Optional[str] = None  # текущая формулировка вопроса(идентификация при рендере и ответе на вопрос)
 npc: Optional[teacher.Teacher] = None  # будущий объект NPC
 mousePos: Optional[tuple[int, int]] = None  # позиция мыши для вычислений
-hoverButton: Optional[list[render.Label]] = None  # текущая кнопка, на которой находится мышь
-prevHoverButton: Optional[list[render.Label]] = None  # предыдущая кнопка, на которой находилась мышь
+hoverButton: Optional[list[Label]] = None  # текущая кнопка, на которой находится мышь
+prevHoverButton: Optional[list[Label]] = None  # предыдущая кнопка, на которой находилась мышь
 
 # интерфейс
 mainMenuButtons = ["Новая игра", "Настройки", "Выход"]
@@ -43,22 +41,22 @@ UI_mainMenuButtons = []  # массив с созданными кнопками
 UI_settingsButtons = []  # кнопки настроек
 UI_settingsLabels = []  # надписи настроек
 UI_pause = []  # кнопки паузы
-UI_pauseLabel = render.Label(text="Пауза",  # большая надпись заголовка паузы
-                             pos=config.SCREEN_SIZE / 2
-                                 - Vector2(render.FONT_TITLE.size("Пауза")) / 2
-                                 - Vector2(0, (1 + int(len(pauseButtons) / 2)) * 30),
-                             color=(255, 255, 255), font=render.FONT_TITLE, LType=render.LTYPE_PAUSE)
-ui_question: Optional[render.Label] = None  # объект надписи вопроса
-ui_answers: list[list[render.Label]] = []  # объекты надписей ответов
+UI_pauseLabel = Label(text="Пауза",  # большая надпись заголовка паузы
+                      pos=config.SCREEN_SIZE / 2
+                          - Vector2(FONT_TITLE.size("Пауза")) / 2
+                          - Vector2(0, (1 + int(len(pauseButtons) / 2)) * 30),
+                      color=(255, 255, 255), font=FONT_TITLE, LType=LTYPE_PAUSE)
+ui_question: Optional[Label] = None  # объект надписи вопроса
+ui_answers: list[list[Label]] = []  # объекты надписей ответов
 
 # Главное меню: кнопки
 for i in range(0, len(mainMenuButtons)):
     y = config.SCREEN_SIZE.y - 25 * (len(mainMenuButtons) + 1) + 25 * i
     UI_mainMenuButtons.append([
-        render.Label(text=mainMenuButtons[i], pos=Vector2(38, y),
-                     color=(255, 255, 255), LType=render.LTYPE_MAIN_MENU),
-        render.Label(text="> " + mainMenuButtons[i], pos=Vector2(20, y),
-                     color=(255, 0, 0), LType=render.LTYPE_MAIN_MENU)
+        Label(text=mainMenuButtons[i], pos=Vector2(38, y),
+              color=(255, 255, 255), LType=LTYPE_MAIN_MENU),
+        Label(text="> " + mainMenuButtons[i], pos=Vector2(20, y),
+              color=(255, 0, 0), LType=LTYPE_MAIN_MENU)
     ])
 
 # Настройки: кнопки < >
@@ -69,40 +67,40 @@ for i in range(0, len(settingsButtons) - 1):
     else:
         x = config.SCREEN_SIZE.x - 25 * (len(settingsButtons) + 1) + 50
     UI_settingsButtons.append([
-        render.Label(text=settingsButtons[i], pos=Vector2(x, y),
-                     color=(255, 255, 255), LType=render.LTYPE_SETTINGS),
-        render.Label(text=settingsButtons[i], pos=Vector2(x, y),
-                     color=(255, 0, 0), LType=render.LTYPE_SETTINGS)
+        Label(text=settingsButtons[i], pos=Vector2(x, y),
+              color=(255, 255, 255), LType=LTYPE_SETTINGS),
+        Label(text=settingsButtons[i], pos=Vector2(x, y),
+              color=(255, 0, 0), LType=LTYPE_SETTINGS)
     ])
 
 # Настройки: кнопка возврата в главное меню
 y = config.SCREEN_SIZE.y - 25 * (len(settingsButtons) + 1) + 25 * (len(settingsButtons) - 1)
 UI_settingsButtons.append([
-    render.Label(text=settingsButtons[len(settingsButtons) - 1], pos=Vector2(38, y),
-                 color=(255, 255, 255), LType=render.LTYPE_SETTINGS),
-    render.Label(text="> " + settingsButtons[len(settingsButtons) - 1], pos=Vector2(20, y),
-                 color=(255, 0, 0), LType=render.LTYPE_SETTINGS)
+    Label(text=settingsButtons[len(settingsButtons) - 1], pos=Vector2(38, y),
+          color=(255, 255, 255), LType=LTYPE_SETTINGS),
+    Label(text="> " + settingsButtons[len(settingsButtons) - 1], pos=Vector2(20, y),
+          color=(255, 0, 0), LType=LTYPE_SETTINGS)
 ])
 
 # Настройки: информационные надписи
 for i in range(0, len(settingsLabels)):
     x = config.SCREEN_SIZE.x - 25 * (len(settingsButtons) + 1) - 250
     y = config.SCREEN_SIZE.y - 55 * (len(settingsButtons) + 1) + 25 * i + 25 * i * (i % 2)
-    UI_settingsLabels.append(render.Label(text=settingsLabels[i], pos=Vector2(x, y),
-                                          color=(255, 255, 255), LType=render.LTYPE_SETTINGS))
-    UI_settingsLabels.append(render.Label(text='100', pos=Vector2(x + 240, y),
-                                          color=(255, 255, 255), LType=render.LTYPE_SETTINGS))
+    UI_settingsLabels.append(Label(text=settingsLabels[i], pos=Vector2(x, y),
+                                   color=(255, 255, 255), LType=LTYPE_SETTINGS))
+    UI_settingsLabels.append(Label(text='100', pos=Vector2(x + 240, y),
+                                   color=(255, 255, 255), LType=LTYPE_SETTINGS))
 
 # Пауза
 for i in range(0, len(pauseButtons)):
     y = config.SCREEN_SIZE.y / 2 + int(len(pauseButtons) / 2) * 30 * i
-    x1 = config.SCREEN_SIZE.x / 2 - render.FONT_COMMON.size(pauseButtons[i])[0] / 2
-    x2 = config.SCREEN_SIZE.x / 2 - render.FONT_COMMON.size("> " + pauseButtons[i] + " <")[0] / 2
+    x1 = config.SCREEN_SIZE.x / 2 - FONT_COMMON.size(pauseButtons[i])[0] / 2
+    x2 = config.SCREEN_SIZE.x / 2 - FONT_COMMON.size("> " + pauseButtons[i] + " <")[0] / 2
     UI_pause.append([
-        render.Label(text=pauseButtons[i], pos=Vector2(x1, y),
-                     color=(255, 255, 255), LType=render.LTYPE_PAUSE),
-        render.Label(text="> " + pauseButtons[i] + " <", pos=Vector2(x2, y),
-                     color=(255, 0, 0), LType=render.LTYPE_PAUSE)
+        Label(text=pauseButtons[i], pos=Vector2(x1, y),
+              color=(255, 255, 255), LType=LTYPE_PAUSE),
+        Label(text="> " + pauseButtons[i] + " <", pos=Vector2(x2, y),
+              color=(255, 0, 0), LType=LTYPE_PAUSE)
     ])
 
 
@@ -140,7 +138,7 @@ def ClearScreen():
     """
     Очистка экрана перед рендером
     """
-    pygame.draw.rect(render.surface, (0, 0, 0), (Vector2(0, 0), config.SCREEN_SIZE))
+    pygame.draw.rect(surface, (0, 0, 0), (Vector2(0, 0), config.SCREEN_SIZE))
 
 
 # основной цикл рендера
@@ -174,17 +172,17 @@ while runningGame:
         elif currentWindow == WINDOW_QUESTION:
             if not currentQuestion:
                 questionKeys = list(questions.keys())
-                currentQuestion = questionKeys[random.randint(0, len(questionKeys) - 1)]
-                ui_question = render.Label(text=currentQuestion, pos=Vector2(5, 5), color=(255, 192, 192),
-                                           font=render.FONT_QUESTION, wrapLen=config.SCREEN_SIZE.x - 10)
+                currentQuestion = questionKeys[randint(0, len(questionKeys) - 1)]
+                ui_question = Label(text=currentQuestion, pos=Vector2(5, 5), color=(255, 192, 192),
+                                    font=FONT_QUESTION, wrapLen=config.SCREEN_SIZE.x - 10)
                 ui_answers.clear()
                 for i in range(1, len(questions[currentQuestion])):
                     y = config.SCREEN_SIZE.y - 20 * len(questions[currentQuestion]) + 20 * i
                     ui_answers.append([
-                        render.Label(text=str(i) + " " + questions[currentQuestion][i], pos=Vector2(20, y),
-                                     color=(255, 255, 255), font=render.FONT_QUESTION, LType=render.LTYPE_QUESTION),
-                        render.Label(text="> " + questions[currentQuestion][i], pos=Vector2(20, y),
-                                     color=(255, 0, 0), font=render.FONT_QUESTION, LType=render.LTYPE_QUESTION)
+                        Label(text=str(i) + " " + questions[currentQuestion][i], pos=Vector2(20, y),
+                              color=(255, 255, 255), font=FONT_QUESTION, LType=LTYPE_QUESTION),
+                        Label(text="> " + questions[currentQuestion][i], pos=Vector2(20, y),
+                              color=(255, 0, 0), font=FONT_QUESTION, LType=LTYPE_QUESTION)
                     ])
             ui_question.RenderWrapping()
             RenderButtons(ui_answers)
@@ -240,7 +238,7 @@ while runningGame:
                 elif UI_settingsButtons[2][0].CollideWith(mousePos) and sound.volSound > 0.1:
                     sound.SetVolume(sound.VOL_SOUND, sound.volSound - 0.1)
                     UI_settingsLabels[3].ChangeText(str(int(sound.volSound * 100)))
-            elif hoverButton[0].type == render.LTYPE_QUESTION:
+            elif hoverButton[0].type == LTYPE_QUESTION:
                 questionData = questions[currentQuestion]
                 sound.PlaySound(sound.SOUND_Q_CORRECT if int(hoverButton[0].text[:1]) == questionData[0]
                                 else sound.SOUND_Q_INCORRECT)
@@ -291,9 +289,9 @@ while runningGame:
 
     # контроль выхода
     if playerPos == config.MAZE_SIZE - Vector2(1, 1):
+        ChangeWindow(WINDOW_MAIN_MENU)
         render.field = None
         sound.StopSoundWalk()
-        ChangeWindow(WINDOW_MAIN_MENU)
         continue
 
     # далее - рендер текстур лабиринта. Если это меню, дальше идти не стоит

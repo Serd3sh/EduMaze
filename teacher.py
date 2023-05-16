@@ -1,9 +1,8 @@
-from config import Vector2
-from random import randint
-import config
-import maze
-import pygame
 import render
+import config
+from renderProxy import *
+from random import randint
+from maze import GetDirections, ROAD
 
 
 class Teacher:
@@ -22,7 +21,7 @@ class Teacher:
 
     # Передвинуть NPC, но не нарисовать его
     def Move(self):
-        directions = maze.GetDirections(self.field, self.pos, maze.ROAD, False)
+        directions = GetDirections(self.field, self.pos, ROAD, False)
 
         # случай с тупиком. Двигаемся обратно
         if len(directions) == 1:

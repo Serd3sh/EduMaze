@@ -1,12 +1,6 @@
-import pygame
-
+from renderProxy import Vector2
 
 # перегрузка хеширования вектора для возможности использовать вектор как индекс массива
-class Vector2(pygame.math.Vector2):
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-
 NPC_ENABLED = True           # Спавн NPC
 NPC_WALKSPEED = 5            # Скорость передвижения NPC в кадрах. Двигаться каждые NPC_WALKSPEED кадров(*)
 PEACE_COOLDOWN = 100         # Длительность мирного режим в кадрах(*)
@@ -56,6 +50,7 @@ QUESTIONS = {
     ]
 }
 
+DEFAULT_CELL_SIZE = Vector2(CELL_SIZE, CELL_SIZE)
 IMAGES = {
     # "тип клетки": [граничное случайное число, путь к файлу]
     # рандом работает на случайном числе, которое генерируется в пределах [0, 100)
@@ -71,7 +66,7 @@ IMAGES = {
     # в случае нескольких файлов рекомендуется нумеровать с 0
     # использование анимированных GIF не допускается из-за особенности библиотеки SDL(pygame)
     "wall": [
-        [0, "assets/Roof.png"]
+        [0, "assets/Roof.png", DEFAULT_CELL_SIZE]
     ],
     "surface_wall": [
         [0, "assets/SurfaceWallBlank.png"],
@@ -99,14 +94,22 @@ IMAGES = {
         "frames": [],     # не записывать. Нужно для подгрузки кадров в память
         "repeats": 0,     # не изменять. Нужно для запоминания задержки
         "length": 10,     # задержка кадра анимации в кадрах отрисовки (15 = 0.5 сек при 30FPS, 15/30)
-        "surface": pygame.transform.scale(
-            pygame.image.load("assets/character-animated.png"),
-            Vector2(CELL_SIZE * 4, CELL_SIZE)
-        )
-    }
+        "texture": None,
+        "file": "assets/character-animated.png",
+        "frameSize": DEFAULT_CELL_SIZE
+    },
+    #"teacher": {
+    #    "frameCount": 4,
+    #    "frames": [],
+    #    "length": 10,
+    #    "repeats": 0,
+    #    "texture": None,
+    #    "file": "",
+    #    "frameSize": DEFAULT_CELL_SIZE + Vector2(0, CELL_SIZE)
+    #}
 }
 
-
+"""
 # загрузка изображения с подгоном разрешения
 def load(root: list):
     for key in root:
@@ -125,3 +128,4 @@ for key in IMAGES:
         continue
     for i in range(0, data["frameCount"]):
         data["frames"].append(data["surface"].subsurface(i * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE))
+"""
