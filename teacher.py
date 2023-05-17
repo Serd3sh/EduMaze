@@ -1,3 +1,6 @@
+"""
+Файл служит для создания NPC(учителя) и его передвижения по лабиринту
+"""
 import render
 import config
 from renderProxy import *
@@ -9,7 +12,7 @@ class Teacher:
     pos: Vector2 = None  # позиция NPC
     prevPos: Vector2 = None  # предыдущая позиция NPC
     field = None  # массив с лабиринтом
-    peaceMode: bool = False
+    peaceMode: bool = False  # мирный режим
 
     forkData = [Vector2(-1, -1), []]  # данные о развилке
     # Первый элемент - позиция развилки
@@ -56,8 +59,8 @@ class Teacher:
         self.prevPos = self.pos
         self.pos = self.pos + direction
 
-    # отрисовка NPC. Не поддерживает пока что туман войны
-    def Render(self, playerPos):
-        c = (self.pos - playerPos) * config.CELL_SIZE + config.SCREEN_SIZE / 2
+    # отрисовка NPC
+    def Render(self, playerPos, frame):
+        c = (self.pos - playerPos) * config.CELL_SIZE - config.IMAGES["teacher"]["frameSize"]/2 + config.SCREEN_SIZE / 2
         if 0 < c.x < config.SCREEN_SIZE.x and 0 < c.y < config.SCREEN_SIZE.y:
-            pygame.draw.circle(render.surface, (255, 0, 0), c, 20)
+            render.RenderAnimated("teacher", frame, c - Vector2(0, config.CELL_SIZE/2))

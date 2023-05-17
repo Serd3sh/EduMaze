@@ -1,3 +1,8 @@
+"""
+Файл служит для отрисовки подгрузки текстур и их дальнейшего использования
+Умеет работать как со статическими текстурами, так и с анимированными
+Все используемые константы и классы находятся в файле renderProxy.py
+"""
 import config
 import maze
 import renderProxy
@@ -123,9 +128,10 @@ def PreloadMazeTextures():
                 currentCell[CELL_OBJ] = GetRandom("road", randomIndex)
 
 
+# замена путей к текстурам в конфиге на сами текстуры, подготовка анимаций
 for key in config.IMAGES:
     data = config.IMAGES[key]
-    if type(data) == dict:
+    if type(data) == dict:  # словарь использует анимированная текстура, в то время как обычная текстура - список
         data["texture"] = Texture(data["file"], Vector2(data["frameSize"].x * data["frameCount"], data["frameSize"].y))
         for i in range(0, data["frameCount"]):
             data["frames"].append(data["texture"].surface.subsurface(

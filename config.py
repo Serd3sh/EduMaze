@@ -1,3 +1,6 @@
+"""
+Конфигурация для более удобного дебага и изменения игровых правил
+"""
 from renderProxy import Vector2
 
 # перегрузка хеширования вектора для возможности использовать вектор как индекс массива
@@ -66,25 +69,25 @@ IMAGES = {
     # в случае нескольких файлов рекомендуется нумеровать с 0
     # использование анимированных GIF не допускается из-за особенности библиотеки SDL(pygame)
     "wall": [
-        [0, "assets/Roof.png", DEFAULT_CELL_SIZE]
+        [0, "assets/images/Roof.png", DEFAULT_CELL_SIZE]
     ],
     "surface_wall": [
-        [0, "assets/SurfaceWallBlank.png"],
-        [40, "assets/SurfaceWallOld.png"],
-        [93, "assets/SurfaceWallNotes.png"],
-        [95, "assets/SurfaceWallElectricPanel.png"],
-        [97, "assets/SurfaceWallGOST.png"],
-        [99, "assets/SurfaceWallKapibara.png"]
+        [0, "assets/images/SurfaceWallBlank.png"],
+        [40, "assets/images/SurfaceWallOld.png"],
+        [93, "assets/images/SurfaceWallNotes.png"],
+        [95, "assets/images/SurfaceWallElectricPanel.png"],
+        [97, "assets/images/SurfaceWallGOST.png"],
+        [99, "assets/images/SurfaceWallKapibara.png"]
     ],
     "surface_wall_door": [
-        [0, "assets/SurfaceWallBlank.png"],
-        [80, "assets/SurfaceWallDoorNothing.png"],
-        [85, "assets/SurfaceWallNothing.png"],
-        [90, "assets/SurfaceWallNothing2.png"],
-        [95, "assets/SurfaceWallDoor.png"]
+        [0, "assets/images/SurfaceWallBlank.png"],
+        [80, "assets/images/SurfaceWallDoorNothing.png"],
+        [85, "assets/images/SurfaceWallNothing.png"],
+        [90, "assets/images/SurfaceWallNothing2.png"],
+        [95, "assets/images/SurfaceWallDoor.png"]
     ],
     "road": [
-        [0, "assets/Road.png"]
+        [0, "assets/images/Road.png"]
     ],
 
     # анимированная текстура представляется как выстроенные в линию спрайты(кадры)
@@ -94,38 +97,17 @@ IMAGES = {
         "frames": [],     # не записывать. Нужно для подгрузки кадров в память
         "repeats": 0,     # не изменять. Нужно для запоминания задержки
         "length": 10,     # задержка кадра анимации в кадрах отрисовки (15 = 0.5 сек при 30FPS, 15/30)
-        "texture": None,
-        "file": "assets/character-animated.png",
-        "frameSize": DEFAULT_CELL_SIZE
+        "texture": None,  # не изменять. Будущий объект текстуры
+        "file": "assets/images/character-animated.png", # путь к файлу с текстурой
+        "frameSize": DEFAULT_CELL_SIZE  # размер одного кадра
     },
-    #"teacher": {
-    #    "frameCount": 4,
-    #    "frames": [],
-    #    "length": 10,
-    #    "repeats": 0,
-    #    "texture": None,
-    #    "file": "",
-    #    "frameSize": DEFAULT_CELL_SIZE + Vector2(0, CELL_SIZE)
-    #}
+    "teacher": {
+        "frameCount": 4,
+        "frames": [],
+        "length": 10,
+        "repeats": 0,
+        "texture": None,
+        "file": "assets/images/teacher-animated.png",
+        "frameSize": DEFAULT_CELL_SIZE + Vector2(0, CELL_SIZE)
+    }
 }
-
-"""
-# загрузка изображения с подгоном разрешения
-def load(root: list):
-    for key in root:
-        key[1] = pygame.transform.scale(pygame.image.load(key[1]), Vector2(CELL_SIZE, CELL_SIZE))
-
-
-load(IMAGES["wall"])
-load(IMAGES["surface_wall"])
-load(IMAGES["surface_wall_door"])
-load(IMAGES["road"])
-
-# загрузка анимации. То есть, подготовка массива с кадрами
-for key in IMAGES:
-    data = IMAGES[key]
-    if type(data) != dict:
-        continue
-    for i in range(0, data["frameCount"]):
-        data["frames"].append(data["surface"].subsurface(i * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE))
-"""

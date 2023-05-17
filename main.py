@@ -1,3 +1,6 @@
+"""
+Главный файл. Использует вспомогательные файлы и отвечает за весь контроль игры
+"""
 import maze
 import render
 import sound
@@ -199,11 +202,13 @@ while runningGame:
             if hoverButton is None:
                 continue
             sound.PlaySound(sound.SOUND_BTN_PRESS)
+            print(f"button control {hoverButton[0].text}, window code: {currentWindow}")
             if hoverButton[0].text == "Выход":
                 runningGame = False
                 break
             elif hoverButton[0].text == "Настройки":
                 ChangeWindow(WINDOW_SETTINGS)
+                print("opening settings")
             elif hoverButton[0].text == "Новая игра":
                 ChangeWindow(WINDOW_GAME)
                 render.field = maze.GenerateMaze(config.MAZE_SIZE)
@@ -288,7 +293,7 @@ while runningGame:
             playerPos = checkPos
 
     # контроль выхода
-    if playerPos == config.MAZE_SIZE - Vector2(1, 1):
+    if currentWindow == WINDOW_GAME and playerPos == config.MAZE_SIZE - Vector2(1, 1):
         ChangeWindow(WINDOW_MAIN_MENU)
         render.field = None
         sound.StopSoundWalk()
@@ -311,7 +316,8 @@ while runningGame:
         if npc.peaceMode and peaceFrames == config.PEACE_COOLDOWN:
             npc.peaceMode = False
             peaceFrames = 0
-        npc.Render(playerPos)
+        if not render.field[npc.pos][maze.CELL_FOG]:
+            npc.Render(playerPos, frames)
 
     pygame.display.update()
 
