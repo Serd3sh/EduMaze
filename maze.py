@@ -15,9 +15,12 @@ MazeField = NewType("MazeField", dict[Vector2, list[int, bool, int, Optional[Tex
 """
 
 # типы клеток в лабиринте
-EMPTY = 0  # Еще не занята. Используется в процессе генерации
-WALL = 1   # Стена. В процессе генерации возможна перезапись
-ROAD = 2   # Дорога. В процессе генерации неизменна
+CID_EMPTY = "empty"         # Еще не занята. Используется в процессе генерации
+CID_WALL = "wall"           # Стена. В процессе генерации возможна перезапись
+CID_ROAD = "road"           # Дорога. В процессе генерации неизменна
+CID_TABLE = "table"         # Пустой стол
+CID_PAPER_TABLE = "papers"  # Стол с бумагами. При приближении активирует вопрос
+CID_EXIT = "exit"           # Клетка выхода
 
 # название параметров для более читаемого обращения к свойству клетки поля
 # например: field[Vector2(13,14)][CELL_ID] == ROAD
@@ -33,22 +36,33 @@ DIRECTIONS = [
 ]
 
 
-def GetDirections(field: MazeField, pos, neighborId, farNeighbor=True):
+def IsCellRoadType(id) -> bool:
+    """
+    Проверка типа клетки на дорогу(то есть где можно пройти)
+    Это актуально, т.к. выход и столы являются проходимыми
+    :param str id: Проверяемый id
+    :returns: True, если этот id проходимый
+    """
+    return id == CID_ROAD or id == CID_TABLE or id == CID_PAPER_TABLE or id == CID_EXIT
+
+def GetDirections(field, pos, neighborId, mazeSize, farNeighbor=True):
     """
     Определить возможные направления относительно указанной клетки
-    :param field: Пола лабиринта, в котором необходим поиск
+    :param MazeField field: Пола лабиринта, в котором необходим поиск
     :param Vector2 pos: Позиция, относительно которой должен идти поиск
-    :param int neighborId: ID необходимого соседа
+    :param str neighborId: ID необходимого соседа
     :param bool farNeighbor: True, если искать на 2 клетки вперед, иначе на 1
+    :param Vector2 mazeSize: Размер лабиринта
     :returns: Массив с доступными соседями
     """
     res = []
     n = 1 if farNeighbor else 2
     for i in range(0, 4):
         neighbor = pos + DIRECTIONS[i] / n
-        if 0 <= neighbor.x < config.MAZE_SIZE.x and 0 <= neighbor.y < config.MAZE_SIZE.y and \
-                field[neighbor][CELL_ID] == neighborId:
-            res.append(DIRECTIONS[i] / n)
+        if 0 <= neighbor.x < mazeSize.x and 0 <= neighbor.y < mazeSize.y:
+            if (neighborId == CID_ROAD and IsCellRoadType(field[neighbor][CELL_ID])) \
+                    or (neighborId != CID_ROAD and field[neighbor][CELL_ID] == neighborId):
+                res.append(DIRECTIONS[i] / n)
     return res
 
 
@@ -66,12 +80,12 @@ def GenerateMaze(field_size) -> MazeField:
         for x in range(0, int(field_size.x)):
             pos = Vector2(x, y)
             if x == 0 and y == 0:
-                field[pos] = [ROAD, config.FOG_ENABLED, randint(0, 99), None]
+                field[pos] = [CID_ROAD, config.FOG_ENABLED, randint(0, 99), None]
                 incomplete_roads.append(pos)
             elif x % 2 == 0 and y % 2 == 0:
-                field[pos] = [EMPTY, config.FOG_ENABLED, randint(0, 99), None]
+                field[pos] = [CID_EMPTY, config.FOG_ENABLED, randint(0, 99), None]
             else:
-                field[pos] = [WALL, config.FOG_ENABLED, randint(0, 99), None]
+                field[pos] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]
 
     # путем змеек создаем пути. Если змейка врезалась и не может никуда свернуть -
     # - возвращаемся туда, где проложили дорогу, и продолжаем создавать путь(тут будет развилка)
@@ -88,7 +102,7 @@ def GenerateMaze(field_size) -> MazeField:
             for i in range(0, 4):
                 near_pos = pos + DIRECTIONS[i]
                 if field_size.x > near_pos.x >= 0 and field_size.y > near_pos.y >= 0 \
-                        and field[near_pos][CELL_ID] == EMPTY:
+                        and field[near_pos][CELL_ID] == CID_EMPTY:
                     can_move = True
                     break
 
@@ -116,16 +130,49 @@ def GenerateMaze(field_size) -> MazeField:
                 break
 
         # перестраховка - возможно лабиринт уже создан
-        # цикл выше гарантирует, что если массив пустой, то лабирнит создан
+        # цикл выше гарантирует, что если массив пустой, то лабиринт создан
         if len(incomplete_roads) == 0:
             break
 
         # а тут прокладываем путь
-        dirs = GetDirections(field, pos, EMPTY)
+        dirs = GetDirections(field, pos, CID_EMPTY, field_size)
 
         cur_dir = dirs[randint(0, len(dirs) - 1)]
-        field[pos + cur_dir][CELL_ID] = ROAD
-        field[pos + cur_dir / 2][CELL_ID] = ROAD
+        field[pos + cur_dir][CELL_ID] = CID_ROAD
+        field[pos + cur_dir / 2][CELL_ID] = CID_ROAD
         pos = pos + cur_dir
+
+    # создание столов в тупиках
+    paperTableCount = 0
+    cellsWithTable = []
+    for y in range(0, int(field_size.y)):
+        for x in range(0, int(field_size.x)):
+            if x == 0 and y == 0:
+                continue
+            cell = field[Vector2(x, y)]
+            if cell[CELL_ID] == CID_ROAD and len(GetDirections(field, Vector2(x, y), CID_ROAD, field_size, False)) == 1:
+                if paperTableCount <= config.MIN_PAPER_TABLES+1 or randint(1, 100) <= config.PAPER_TABLE_CHANCE:
+                    cell[CELL_ID] = CID_PAPER_TABLE
+                    paperTableCount += 1
+                else:
+                    cell[CELL_ID] = CID_TABLE
+                cellsWithTable.append(Vector2(x, y))
+
+    # внешние границы лабиринта
+    for x in range(-1, int(field_size.x)+1):
+        field[Vector2(x, -1)] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]
+        field[Vector2(x, field_size.y)] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]
+
+    for y in range(0, int(field_size.y)):
+        field[Vector2(-1, y)] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]
+        field[Vector2(field_size.x, y)] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]
+
+    # создание выхода
+    while True:
+        key = cellsWithTable[randint(0, len(cellsWithTable) - 1)]
+        if field[key - Vector2(0, 1)][CELL_ID] == CID_WALL:
+            break
+        cellsWithTable.remove(key)
+    field[key][CELL_ID] = CID_EXIT
 
     return field

@@ -7,11 +7,12 @@ import config
 import maze
 import renderProxy
 from renderProxy import *
-from maze import CELL_ID, CELL_OBJ, CELL_RAND, CELL_FOG, DIRECTIONS, ROAD, WALL
+from maze import CELL_ID, CELL_OBJ, CELL_RAND, CELL_FOG, DIRECTIONS, CID_EXIT, CID_WALL, IsCellRoadType
 
 
 pygame.display.init()
 surface = renderProxy.surface = pygame.display.set_mode(config.SCREEN_SIZE)
+pygame.display.set_caption("Maze")
 
 
 def RenderAnimated(img, frame, pos):
@@ -31,7 +32,7 @@ def GetRandom(img, randomIndex):
     Определение случайной текстуры для текстур с шансом выпадения
     :param str img: Наименование текстуры из конфигурации
     :param int randomIndex: Случайное число, записанное в клетку
-    :returns: Surface текстуры
+    :returns: Выбранная текстура
     """
     path = config.IMAGES[img]
     res = path[0]
@@ -52,11 +53,12 @@ def GetRandom(img, randomIndex):
 field: Optional[maze.MazeField] = None
 
 
-def RenderMaze(pos: Vector2):
+def RenderMaze(pos: Vector2, frame: int):
     """
     Рендер фрагмента поля лабиринта, пределы которого определятся тем, что видит игрок
     Так же, обращает внимание на туман войны
     :param Vector2 pos: Позиция игрока внутри лабиринта
+    :param int frame: номер текущего кадра для анимации выхода
     """
     if field is None:
         return
@@ -69,26 +71,26 @@ def RenderMaze(pos: Vector2):
         tempPos = pos.copy()
         while True:
             tempPos += DIRECTIONS[i] / 2
-            if 0 <= tempPos.x < config.MAZE_SIZE.x and 0 <= tempPos.y < config.MAZE_SIZE.y \
-                    and field[tempPos][CELL_ID] == ROAD:
+            if -1 <= tempPos.x <= config.MAZE_SIZE.x and -1 <= tempPos.y <= config.MAZE_SIZE.y \
+                    and IsCellRoadType(field[tempPos][CELL_ID]):
                 field[tempPos][CELL_FOG] = False
-                if tempPos.x + 1 < config.MAZE_SIZE.x:
+                if tempPos.x < config.MAZE_SIZE.x + 1:
                     field[tempPos + Vector2(1, 0)][CELL_FOG] = False
-                if tempPos.y + 1 < config.MAZE_SIZE.y:
+                if tempPos.y < config.MAZE_SIZE.y + 1:
                     field[tempPos + Vector2(0, 1)][CELL_FOG] = False
-                if tempPos.x - 1 > 0:
+                if tempPos.x > -1:
                     field[tempPos + Vector2(-1, 0)][CELL_FOG] = False
-                if tempPos.y - 1 > 0:
+                if tempPos.y > -1:
                     field[tempPos + Vector2(0, -1)][CELL_FOG] = False
             else:
                 break
 
     # рассеивание тумана вокруг игрока
     for y in range(int(pos.y - (config.RENDER_FOG - 1) / 2), int(pos.y + (config.RENDER_FOG + 1) / 2)):
-        if y < 0 or y >= config.MAZE_SIZE.y:
+        if y < -1 or y >= config.MAZE_SIZE.y + 1:
             continue
         for x in range(int(pos.x - (config.RENDER_FOG - 1) / 2), int(pos.x + (config.RENDER_FOG + 1) / 2)):
-            if x < 0 or x >= config.MAZE_SIZE.x:
+            if x < -1 or x >= config.MAZE_SIZE.x + 1:
                 continue
             field[Vector2(x, y)][CELL_FOG] = False
 
@@ -98,13 +100,17 @@ def RenderMaze(pos: Vector2):
     for y in range(int(pos.y - (config.RENDER_DIAMETER - 1) / 2), int(pos.y + (config.RENDER_DIAMETER + 1) / 2)):
         i = i + 1
         j = -1
-        if y < 0 or y >= config.MAZE_SIZE.y:
+        if y < -1 or y >= config.MAZE_SIZE.y + 1:
             continue
         for x in range(int(pos.x - (config.RENDER_DIAMETER - 1) / 2), int(pos.x + (config.RENDER_DIAMETER + 1) / 2)):
             j = j + 1
-            if x < 0 or x >= config.MAZE_SIZE.x or field[Vector2(x, y)][CELL_FOG]:
+            if x < -1 or x >= config.MAZE_SIZE.x + 1 or field[Vector2(x, y)][CELL_FOG]:
                 continue
-            field[Vector2(x, y)][CELL_OBJ].Render(Vector2(j * config.CELL_SIZE, i * config.CELL_SIZE))
+            if field[Vector2(x, y)][CELL_ID] == CID_EXIT:
+                RenderAnimated("surface_exit", frame, Vector2(j * config.CELL_SIZE, (i-1) * config.CELL_SIZE))
+                field[Vector2(x, y)][CELL_OBJ].Render(Vector2(j * config.CELL_SIZE, i * config.CELL_SIZE))
+            elif field[Vector2(x, y)][CELL_OBJ] is not None:
+                field[Vector2(x, y)][CELL_OBJ].Render(Vector2(j * config.CELL_SIZE, i * config.CELL_SIZE))
 
 
 def PreloadMazeTextures():
@@ -112,20 +118,20 @@ def PreloadMazeTextures():
     Подгрузка текстур в массив с лабиринтом для дальнейшего рендера
     :return:
     """
-    for y in range(0, int(config.MAZE_SIZE.y)):
-        for x in range(0, int(config.MAZE_SIZE.x)):
+    for y in range(-1, int(config.MAZE_SIZE.y)+1):
+        for x in range(-1, int(config.MAZE_SIZE.x)+1):
             currentCell = field[Vector2(x, y)]
             cellId = currentCell[CELL_ID]
             randomIndex = currentCell[CELL_RAND]
-            if cellId == WALL and y + 1 < config.MAZE_SIZE.y and field[Vector2(x, y + 1)][CELL_ID] == ROAD:
-                if y - 1 >= 0 and field[Vector2(x, y - 1)][CELL_ID] == WALL:
+            if cellId == CID_WALL and y + 1 < config.MAZE_SIZE.y and IsCellRoadType(field[Vector2(x, y + 1)][CELL_ID]):
+                if field[Vector2(x, y + 1)][CELL_ID] == CID_EXIT:
+                    continue
+                if y - 1 >= 0 and field[Vector2(x, y - 1)][CELL_ID] == CID_WALL:
                     currentCell[CELL_OBJ] = GetRandom("surface_wall_door", randomIndex)
                 else:
                     currentCell[CELL_OBJ] = GetRandom("surface_wall", randomIndex)
-            elif cellId == WALL:
-                currentCell[CELL_OBJ] = GetRandom("wall", randomIndex)
             else:
-                currentCell[CELL_OBJ] = GetRandom("road", randomIndex)
+                currentCell[CELL_OBJ] = GetRandom(cellId, randomIndex)
 
 
 # замена путей к текстурам в конфиге на сами текстуры, подготовка анимаций
@@ -138,4 +144,4 @@ for key in config.IMAGES:
                 i * config.CELL_SIZE, 0, data["frameSize"].x, data["frameSize"].y))
     else:
         for obj in data:
-            obj[1] = Texture(obj[1], config.DEFAULT_CELL_SIZE)
+            obj[1] = Texture(obj[1], obj[2] if len(obj) == 3 else config.DEFAULT_CELL_SIZE)

@@ -1,6 +1,8 @@
 """
 Главный файл. Использует вспомогательные файлы и отвечает за весь контроль игры
 """
+import pygame.draw
+
 import maze
 import render
 import sound
@@ -25,14 +27,18 @@ frames = 0  # счетчик кадров для ренедра анимации
 frameRate = 1 / config.FPS  # время задержки между кадрами для приостановки потока в рендере
 peaceFrames = 0  # счетчик кадров мирного режима
 questions = config.QUESTIONS.copy()  # массив с вопросами
+HP = 3
+peaceMode = False
 
 # переменные без значений по умолчанию(None, пустые массивы)
 prevWindow: Optional[int] = None  # предыдущее активное окно
 currentQuestion: Optional[str] = None  # текущая формулировка вопроса(идентификация при рендере и ответе на вопрос)
-npc: Optional[teacher.Teacher] = None  # будущий объект NPC
+npc: [Optional[teacher.Teacher]] = []
 mousePos: Optional[tuple[int, int]] = None  # позиция мыши для вычислений
 hoverButton: Optional[list[Label]] = None  # текущая кнопка, на которой находится мышь
 prevHoverButton: Optional[list[Label]] = None  # предыдущая кнопка, на которой находилась мышь
+questionGiver: Optional[any] = None
+
 
 # интерфейс
 mainMenuButtons = ["Новая игра", "Настройки", "Выход"]
@@ -45,9 +51,8 @@ UI_settingsButtons = []  # кнопки настроек
 UI_settingsLabels = []  # надписи настроек
 UI_pause = []  # кнопки паузы
 UI_pauseLabel = Label(text="Пауза",  # большая надпись заголовка паузы
-                      pos=config.SCREEN_SIZE / 2
-                          - Vector2(FONT_TITLE.size("Пауза")) / 2
-                          - Vector2(0, (1 + int(len(pauseButtons) / 2)) * 30),
+                      pos=config.SCREEN_SIZE / 2 - Vector2(FONT_TITLE.size("Пауза")) / 2 - Vector2(0, (1 + int(len(
+                          pauseButtons) / 2)) * 30),
                       color=(255, 255, 255), font=FONT_TITLE, LType=LTYPE_PAUSE)
 ui_question: Optional[Label] = None  # объект надписи вопроса
 ui_answers: list[list[Label]] = []  # объекты надписей ответов
@@ -91,7 +96,7 @@ for i in range(0, len(settingsLabels)):
     y = config.SCREEN_SIZE.y - 55 * (len(settingsButtons) + 1) + 25 * i + 25 * i * (i % 2)
     UI_settingsLabels.append(Label(text=settingsLabels[i], pos=Vector2(x, y),
                                    color=(255, 255, 255), LType=LTYPE_SETTINGS))
-    UI_settingsLabels.append(Label(text='100', pos=Vector2(x + 240, y),
+    UI_settingsLabels.append(Label(text=str(int(sound.settingsSavedArray[i]*100)), pos=Vector2(x + 240, y),
                                    color=(255, 255, 255), LType=LTYPE_SETTINGS))
 
 # Пауза
@@ -153,9 +158,12 @@ while runningGame:
         frames = 0
 
     # демонстрация вопроса и пауза игры
-    if npc and npc.pos == playerPos and not npc.peaceMode:
-        npc.peaceMode = True
-        ChangeWindow(WINDOW_QUESTION)
+    for bot in npc:
+        if bot.pos == playerPos and not peaceMode:
+            peaceMode = True
+            ChangeWindow(WINDOW_QUESTION)
+            questionGiver = bot
+            break
 
     # рендер обычного интерфейса(не лабиринт)
     if currentWindow != WINDOW_GAME:
@@ -202,24 +210,26 @@ while runningGame:
             if hoverButton is None:
                 continue
             sound.PlaySound(sound.SOUND_BTN_PRESS)
-            print(f"button control {hoverButton[0].text}, window code: {currentWindow}")
             if hoverButton[0].text == "Выход":
                 runningGame = False
                 break
             elif hoverButton[0].text == "Настройки":
                 ChangeWindow(WINDOW_SETTINGS)
-                print("opening settings")
             elif hoverButton[0].text == "Новая игра":
                 ChangeWindow(WINDOW_GAME)
                 render.field = maze.GenerateMaze(config.MAZE_SIZE)
                 render.PreloadMazeTextures()
                 if config.NPC_ENABLED:
-                    npc = teacher.Teacher(render.field, Vector2(2, 2))
+                    for n in range(0, config.NPC_SPAWN_COUNT):
+                        x = randint(0, config.MAZE_SIZE.x)
+                        y = randint(0, config.MAZE_SIZE.y)
+                        npc.append(teacher.Teacher(render.field, Vector2(x - x % 2, y - y % 2)))
                 playerPos = Vector2(0, 0)
                 hoverButton = None
                 prevHoverButton = None
             elif hoverButton[0].text == "Назад":
                 ChangeWindow(prevWindow)
+                sound.SaveToFile()
                 break
             elif hoverButton[0].text == "Продолжить":
                 ChangeWindow(WINDOW_GAME)
@@ -245,12 +255,22 @@ while runningGame:
                     UI_settingsLabels[3].ChangeText(str(int(sound.volSound * 100)))
             elif hoverButton[0].type == LTYPE_QUESTION:
                 questionData = questions[currentQuestion]
-                sound.PlaySound(sound.SOUND_Q_CORRECT if int(hoverButton[0].text[:1]) == questionData[0]
-                                else sound.SOUND_Q_INCORRECT)
+                correct = int(hoverButton[0].text[:1]) == questionData[0]
+                sound.PlaySound(sound.SOUND_Q_CORRECT if correct else sound.SOUND_Q_INCORRECT)
+                if type(questionGiver) == list:  # если это стол - то questGiver будет информацией об этой клетке
+                    if correct:
+                        HP += 1
+                    questionGiver[maze.CELL_ID] = maze.CID_TABLE
+                    questionGiver[maze.CELL_OBJ].SetFile("assets/images/EmptyTable.png")
+                else:  # а здесь уже NPC
+                    if not correct:
+                        HP -= 1
+                questionGiver = None
                 questions.pop(currentQuestion)
                 if len(questions) == 0:
                     questions = config.QUESTIONS.copy()
-                npc.Move()
+                for bot in npc:
+                    bot.Move()
                 currentQuestion = None
                 ChangeWindow(WINDOW_GAME)
 
@@ -289,35 +309,48 @@ while runningGame:
             continue
 
         # проверка коллизии со стеной
-        if render.field[checkPos][maze.CELL_ID] == maze.ROAD or not config.COLLISIONS:
+        if maze.IsCellRoadType(render.field[checkPos][maze.CELL_ID]) or not config.COLLISIONS:
             playerPos = checkPos
-
-    # контроль выхода
-    if currentWindow == WINDOW_GAME and playerPos == config.MAZE_SIZE - Vector2(1, 1):
-        ChangeWindow(WINDOW_MAIN_MENU)
-        render.field = None
-        sound.StopSoundWalk()
-        continue
+            print(render.field[checkPos][maze.CELL_ID])
 
     # далее - рендер текстур лабиринта. Если это меню, дальше идти не стоит
     if currentWindow != WINDOW_GAME:
         continue
 
+    # TODO: пустые столы тоже дают вопросы
+    if currentWindow == WINDOW_GAME and render.field[playerPos][maze.CELL_ID] == maze.CID_PAPER_TABLE:
+        peaceMode = True
+        ChangeWindow(WINDOW_QUESTION)
+        questionGiver = render.field[playerPos]
+
+    # контроль выхода
+    if currentWindow == WINDOW_GAME and render.field[playerPos][maze.CELL_ID] == maze.CID_EXIT:
+        ChangeWindow(WINDOW_MAIN_MENU)
+        render.field = None
+        sound.StopSoundWalk()
+        npc.clear()
+        continue
+
     # очистка содержимого перед рендером и сам рендер
     ClearScreen()
-    render.RenderMaze(playerPos)
+    render.RenderMaze(playerPos, frames)
     render.RenderAnimated("player", frames, config.SCREEN_SIZE / 2 - Vector2(int(config.CELL_SIZE / 2),
                                                                              int(config.CELL_SIZE / 2)))
-    if npc:
-        if npc.peaceMode:
-            peaceFrames = peaceFrames + 1
+    if peaceMode:
+        peaceFrames = peaceFrames + 1
+    if peaceMode and peaceFrames == config.PEACE_COOLDOWN:
+        peaceMode = False
+        peaceFrames = 0
+    for bot in npc:
         if frames % config.NPC_WALKSPEED == 0:  # каждый 5 кадр двигать NPC
-            npc.Move()
-        if npc.peaceMode and peaceFrames == config.PEACE_COOLDOWN:
-            npc.peaceMode = False
-            peaceFrames = 0
-        if not render.field[npc.pos][maze.CELL_FOG]:
-            npc.Render(playerPos, frames)
+            bot.Move()
+        if not render.field[bot.pos][maze.CELL_FOG]:
+            bot.Render(playerPos, frames)
+
+    # TODO: при 0 HP игра окончена
+    for i in range(0, HP):
+        config.IMAGES["HP_protected" if peaceMode else "HP"][0][1].Render(
+            Vector2(config.SCREEN_SIZE.x - (32+4)*(HP-i), 4))
 
     pygame.display.update()
 

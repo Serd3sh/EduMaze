@@ -5,7 +5,7 @@ import render
 import config
 from renderProxy import *
 from random import randint
-from maze import GetDirections, ROAD
+from maze import GetDirections, CID_ROAD
 
 
 class Teacher:
@@ -24,7 +24,11 @@ class Teacher:
 
     # Передвинуть NPC, но не нарисовать его
     def Move(self):
-        directions = GetDirections(self.field, self.pos, ROAD, False)
+        """
+        Передвинуть NPC в случайном направлении
+        Эта функция сама определяет направления, текущее направление и данные о развилках
+        """
+        directions = GetDirections(self.field, self.pos, CID_ROAD, config.MAZE_SIZE, False)
 
         # случай с тупиком. Двигаемся обратно
         if len(directions) == 1:
@@ -61,6 +65,11 @@ class Teacher:
 
     # отрисовка NPC
     def Render(self, playerPos, frame):
+        """
+        Нарисовать NPC на экране
+        :param Vector2 playerPos: Позиция игрока. Относительно неё будет идти рендер
+        :param frame: Номер текущего кадра для создания анимации
+        """
         c = (self.pos - playerPos) * config.CELL_SIZE - config.IMAGES["teacher"]["frameSize"]/2 + config.SCREEN_SIZE / 2
         if 0 < c.x < config.SCREEN_SIZE.x and 0 < c.y < config.SCREEN_SIZE.y:
             render.RenderAnimated("teacher", frame, c - Vector2(0, config.CELL_SIZE/2))

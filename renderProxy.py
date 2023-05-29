@@ -37,16 +37,19 @@ class Texture:
     def __init__(self, file: str, size: Vector2 = defaultCellSize):
         self.file = file
         self.size = size
-        self.surface = pygame.transform.scale(pygame.image.load(file), size)
+        if size == Vector2(0, 0):
+            self.surface = pygame.image.load(file)
+        else:
+            self.surface = pygame.transform.scale(pygame.image.load(file), size)
 
     def Render(self, dest: Vector2):
         surface.blit(self.surface, dest)
 
-    def SetFile(self, newFile: str, newSize: Optional[Vector2]):
+    def SetFile(self, newFile: str, newSize: Optional[Vector2] = None):
         self.file = newFile
-        if newSize:
+        if newSize is not None:
             self.size = newSize
-        self.surface = pygame.transform.scale(pygame.image.load(self.file), self.size)
+        self.surface = pygame.transform.scale(pygame.image.load(newFile), self.size)
 
 
 class Label:
