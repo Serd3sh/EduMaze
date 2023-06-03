@@ -2,13 +2,12 @@
 Главный файл. Использует вспомогательные файлы и отвечает за весь контроль игры
 """
 import pygame.draw
-
 import maze
 import render
 import sound
 import teacher
-import time
 import config
+from time import sleep
 from random import randint
 from renderProxy import *
 
@@ -18,6 +17,13 @@ WINDOW_SETTINGS = 1
 WINDOW_GAME = 2
 WINDOW_PAUSE = 3
 WINDOW_QUESTION = 4
+WINDOW_ENDGAME_WIN = 5
+WINDOW_ENDGAME_LOSE = 6
+
+# идентификация того, кто выдал вопрос
+QGIVER_NONE = 0
+QGIVER_NPC = 1
+QGIVER_PAPERS = 2
 
 # переменными со значениями по умолчанию
 currentWindow = WINDOW_MAIN_MENU  # текущее активное окно
@@ -27,8 +33,10 @@ frames = 0  # счетчик кадров для ренедра анимации
 frameRate = 1 / config.FPS  # время задержки между кадрами для приостановки потока в рендере
 peaceFrames = 0  # счетчик кадров мирного режима
 questions = config.QUESTIONS.copy()  # массив с вопросами
-HP = 3
-peaceMode = False
+HP = config.MAX_HP  # текущее кол-во ХП у игрока
+peaceMode = False  # мирный режим, если игрок ответил на вопрос(без разницы верно или нет)
+questionGiver = QGIVER_NONE  # флаг для определения исхода ответа на вопрос
+taskCount = 0  # текущее кол-во сданных работ у игрока
 
 # переменные без значений по умолчанию(None, пустые массивы)
 prevWindow: Optional[int] = None  # предыдущее активное окно
@@ -37,8 +45,6 @@ npc: [Optional[teacher.Teacher]] = []
 mousePos: Optional[tuple[int, int]] = None  # позиция мыши для вычислений
 hoverButton: Optional[list[Label]] = None  # текущая кнопка, на которой находится мышь
 prevHoverButton: Optional[list[Label]] = None  # предыдущая кнопка, на которой находилась мышь
-questionGiver: Optional[any] = None
-
 
 # интерфейс
 mainMenuButtons = ["Новая игра", "Настройки", "Выход"]
@@ -56,6 +62,22 @@ UI_pauseLabel = Label(text="Пауза",  # большая надпись заг
                       color=(255, 255, 255), font=FONT_TITLE, LType=LTYPE_PAUSE)
 ui_question: Optional[Label] = None  # объект надписи вопроса
 ui_answers: list[list[Label]] = []  # объекты надписей ответов
+ui_win = Label(text="Вы сдали сессию",
+               pos=config.SCREEN_SIZE / 2 - Vector2(FONT_TITLE.size("Вы сдали сессию")) / 2 - Vector2(0, 30),
+               color=(255, 255, 255), font=FONT_TITLE)
+ui_lose = Label(text="Вы не сдали сессию",
+                pos=config.SCREEN_SIZE / 2 - Vector2(FONT_TITLE.size("Вы не сдали сессию")) / 2 - Vector2(0, 30),
+                color=(255, 255, 255), font=FONT_TITLE)
+ui_endgameReturn = [[
+    Label(text="Меню", pos=config.SCREEN_SIZE / 2 - Vector2(FONT_COMMON.size("Меню")) / 2 + Vector2(0, 30),
+          color=(255, 255, 255), font=FONT_COMMON, LType=LTYPE_ENDGAME),
+    Label(text="> Меню <", pos=config.SCREEN_SIZE / 2 - Vector2(FONT_COMMON.size("> Меню <")) / 2 + Vector2(0, 30),
+          color=(255, 0, 0), font=FONT_COMMON, LType=LTYPE_ENDGAME)
+]]
+ui_taskCount = Label(text="0/" + str(config.MAX_TASKS),
+                     pos=Vector2(config.SCREEN_SIZE.x - FONT_COMMON.size("0/" + str(config.MAX_TASKS))[0] - 8,
+                                 32 + 4 + 4 + 7),
+                     color=(255, 255, 255), font=FONT_COMMON)
 
 # Главное меню: кнопки
 for i in range(0, len(mainMenuButtons)):
@@ -96,7 +118,7 @@ for i in range(0, len(settingsLabels)):
     y = config.SCREEN_SIZE.y - 55 * (len(settingsButtons) + 1) + 25 * i + 25 * i * (i % 2)
     UI_settingsLabels.append(Label(text=settingsLabels[i], pos=Vector2(x, y),
                                    color=(255, 255, 255), LType=LTYPE_SETTINGS))
-    UI_settingsLabels.append(Label(text=str(int(sound.settingsSavedArray[i]*100)), pos=Vector2(x + 240, y),
+    UI_settingsLabels.append(Label(text=str(int(sound.settingsSavedArray[i] * 100)), pos=Vector2(x + 240, y),
                                    color=(255, 255, 255), LType=LTYPE_SETTINGS))
 
 # Пауза
@@ -149,9 +171,26 @@ def ClearScreen():
     pygame.draw.rect(surface, (0, 0, 0), (Vector2(0, 0), config.SCREEN_SIZE))
 
 
+def EndGame(newWindow=WINDOW_MAIN_MENU):
+    """
+    Завершение игры с выходом в указанное меню
+    :param int newWindow: Целевое окно после завершения игры. По умолчанию главно меню
+    """
+    global HP, taskCount, playerPos
+    ChangeWindow(newWindow)
+    render.field = None
+    sound.StopSoundWalk()
+    npc.clear()
+    HP = config.MAX_HP
+    if taskCount != 0:
+        ui_taskCount.ChangeText("0/" + str(config.MAX_TASKS))
+        taskCount = 0
+    playerPos = Vector2(0, 0)
+
+
 # основной цикл рендера
 while runningGame:
-    time.sleep(frameRate)
+    sleep(frameRate)
     frames = frames + 1
     mousePos = pygame.mouse.get_pos()
     if frames > 10000:
@@ -162,7 +201,7 @@ while runningGame:
         if bot.pos == playerPos and not peaceMode:
             peaceMode = True
             ChangeWindow(WINDOW_QUESTION)
-            questionGiver = bot
+            questionGiver = QGIVER_NPC
             break
 
     # рендер обычного интерфейса(не лабиринт)
@@ -197,7 +236,13 @@ while runningGame:
                     ])
             ui_question.RenderWrapping()
             RenderButtons(ui_answers)
-        pygame.display.update()  # показ содержимого
+        elif currentWindow == WINDOW_ENDGAME_WIN:
+            ui_win.Render()
+            RenderButtons(ui_endgameReturn)
+        elif currentWindow == WINDOW_ENDGAME_LOSE:
+            ui_lose.Render()
+            RenderButtons(ui_endgameReturn)
+        pygame.display.update()
 
     # контроль нажатия кнопок
     for ev in pygame.event.get():
@@ -221,23 +266,23 @@ while runningGame:
                 render.PreloadMazeTextures()
                 if config.NPC_ENABLED:
                     for n in range(0, config.NPC_SPAWN_COUNT):
-                        x = randint(0, config.MAZE_SIZE.x)
-                        y = randint(0, config.MAZE_SIZE.y)
+                        (x, y) = (0, 0)
+                        while x <= config.NPC_SAFE_ZONE.x and y <= config.NPC_SAFE_ZONE.y:
+                            x = randint(0, config.MAZE_SIZE.x)
+                            y = randint(0, config.MAZE_SIZE.y)
                         npc.append(teacher.Teacher(render.field, Vector2(x - x % 2, y - y % 2)))
-                playerPos = Vector2(0, 0)
                 hoverButton = None
                 prevHoverButton = None
             elif hoverButton[0].text == "Назад":
                 ChangeWindow(prevWindow)
-                sound.SaveToFile()
+                if prevWindow == WINDOW_SETTINGS:
+                    sound.SaveToFile()
                 break
             elif hoverButton[0].text == "Продолжить":
                 ChangeWindow(WINDOW_GAME)
                 break
-            elif hoverButton[0].text == "Завершить игру":
-                ChangeWindow(WINDOW_MAIN_MENU)
-                render.field = None
-                sound.StopSoundWalk()
+            elif hoverButton[0].text == "Завершить игру" or hoverButton[0].text == "Меню":
+                EndGame()
                 break
             elif hoverButton[0].text == ">":
                 if UI_settingsButtons[1][0].CollideWith(mousePos) and sound.volMusic < 1:
@@ -253,19 +298,19 @@ while runningGame:
                 elif UI_settingsButtons[2][0].CollideWith(mousePos) and sound.volSound > 0.1:
                     sound.SetVolume(sound.VOL_SOUND, sound.volSound - 0.1)
                     UI_settingsLabels[3].ChangeText(str(int(sound.volSound * 100)))
+            # показ вопроса
             elif hoverButton[0].type == LTYPE_QUESTION:
                 questionData = questions[currentQuestion]
                 correct = int(hoverButton[0].text[:1]) == questionData[0]
                 sound.PlaySound(sound.SOUND_Q_CORRECT if correct else sound.SOUND_Q_INCORRECT)
-                if type(questionGiver) == list:  # если это стол - то questGiver будет информацией об этой клетке
-                    if correct:
+                if questionGiver == QGIVER_PAPERS and correct:
+                    if HP < config.MAX_HP:
                         HP += 1
-                    questionGiver[maze.CELL_ID] = maze.CID_TABLE
-                    questionGiver[maze.CELL_OBJ].SetFile("assets/images/EmptyTable.png")
-                else:  # а здесь уже NPC
-                    if not correct:
-                        HP -= 1
-                questionGiver = None
+                    taskCount += 1
+                    ui_taskCount.ChangeText(str(taskCount) + "/" + str(config.MAX_TASKS))
+                elif questionGiver == QGIVER_NPC and not correct:
+                    HP -= 1
+                questionGiver = QGIVER_NONE
                 questions.pop(currentQuestion)
                 if len(questions) == 0:
                     questions = config.QUESTIONS.copy()
@@ -311,24 +356,27 @@ while runningGame:
         # проверка коллизии со стеной
         if maze.IsCellRoadType(render.field[checkPos][maze.CELL_ID]) or not config.COLLISIONS:
             playerPos = checkPos
-            print(render.field[checkPos][maze.CELL_ID])
 
     # далее - рендер текстур лабиринта. Если это меню, дальше идти не стоит
     if currentWindow != WINDOW_GAME:
         continue
 
-    # TODO: пустые столы тоже дают вопросы
-    if currentWindow == WINDOW_GAME and render.field[playerPos][maze.CELL_ID] == maze.CID_PAPER_TABLE:
+    # конец игры, неудачная встреча с преподами
+    if HP == 0:
+        EndGame(WINDOW_ENDGAME_LOSE)
+        continue
+
+    # встреча со столом с работами
+    if render.field[playerPos][maze.CELL_ID] == maze.CID_PAPER_TABLE:
         peaceMode = True
         ChangeWindow(WINDOW_QUESTION)
-        questionGiver = render.field[playerPos]
+        questionGiver = QGIVER_PAPERS
+        render.field[playerPos][maze.CELL_ID] = maze.CID_TABLE
+        render.field[playerPos][maze.CELL_OBJ] = render.GetRandom("table", render.field[playerPos][maze.CELL_RAND])
 
     # контроль выхода
-    if currentWindow == WINDOW_GAME and render.field[playerPos][maze.CELL_ID] == maze.CID_EXIT:
-        ChangeWindow(WINDOW_MAIN_MENU)
-        render.field = None
-        sound.StopSoundWalk()
-        npc.clear()
+    if render.field[playerPos][maze.CELL_ID] == maze.CID_EXIT:
+        EndGame(WINDOW_ENDGAME_WIN if taskCount >= config.MAX_TASKS else WINDOW_ENDGAME_LOSE)
         continue
 
     # очистка содержимого перед рендером и сам рендер
@@ -336,21 +384,30 @@ while runningGame:
     render.RenderMaze(playerPos, frames)
     render.RenderAnimated("player", frames, config.SCREEN_SIZE / 2 - Vector2(int(config.CELL_SIZE / 2),
                                                                              int(config.CELL_SIZE / 2)))
+
+    # контроль мирного режима
     if peaceMode:
         peaceFrames = peaceFrames + 1
     if peaceMode and peaceFrames == config.PEACE_COOLDOWN:
         peaceMode = False
         peaceFrames = 0
+
+    # передвижение и рендер преподов
     for bot in npc:
-        if frames % config.NPC_WALKSPEED == 0:  # каждый 5 кадр двигать NPC
+        if frames % config.NPC_WALKSPEED == 0:  # каждый 5 кадр двигать препода
             bot.Move()
         if not render.field[bot.pos][maze.CELL_FOG]:
             bot.Render(playerPos, frames)
 
-    # TODO: при 0 HP игра окончена
+    # рендер хп и количество сданных работ
     for i in range(0, HP):
         config.IMAGES["HP_protected" if peaceMode else "HP"][0][1].Render(
-            Vector2(config.SCREEN_SIZE.x - (32+4)*(HP-i), 4))
+            Vector2(config.SCREEN_SIZE.x - (32 + 4) * (HP - i), 4))
+
+    config.IMAGES["clip"][0][1].Render(
+        Vector2(config.SCREEN_SIZE.x - FONT_COMMON.size(str(taskCount) + "/" + str(config.MAX_TASKS))[0] - 8 - 32 - 4,
+                4 + 32 + 4))
+    ui_taskCount.Render()
 
     pygame.display.update()
 

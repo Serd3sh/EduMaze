@@ -144,6 +144,7 @@ def GenerateMaze(field_size) -> MazeField:
 
     # создание столов в тупиках
     paperTableCount = 0
+    tableCount = 0
     cellsWithTable = []
     for y in range(0, int(field_size.y)):
         for x in range(0, int(field_size.x)):
@@ -151,13 +152,14 @@ def GenerateMaze(field_size) -> MazeField:
                 continue
             cell = field[Vector2(x, y)]
             if cell[CELL_ID] == CID_ROAD and len(GetDirections(field, Vector2(x, y), CID_ROAD, field_size, False)) == 1:
+                tableCount += 1
                 if paperTableCount <= config.MIN_PAPER_TABLES+1 or randint(1, 100) <= config.PAPER_TABLE_CHANCE:
                     cell[CELL_ID] = CID_PAPER_TABLE
                     paperTableCount += 1
                 else:
                     cell[CELL_ID] = CID_TABLE
                 cellsWithTable.append(Vector2(x, y))
-
+    print(f"Interactive tables: {paperTableCount-1}/{tableCount}({int((paperTableCount-1)/tableCount*100)}%)")
     # внешние границы лабиринта
     for x in range(-1, int(field_size.x)+1):
         field[Vector2(x, -1)] = [CID_WALL, config.FOG_ENABLED, randint(0, 99), None]

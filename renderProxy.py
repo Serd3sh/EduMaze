@@ -22,6 +22,7 @@ LTYPE_MAIN_MENU = 0
 LTYPE_SETTINGS = 1
 LTYPE_QUESTION = 2
 LTYPE_PAUSE = 3
+LTYPE_ENDGAME = 4
 
 
 class Vector2(pygame.math.Vector2):
