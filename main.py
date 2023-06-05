@@ -74,8 +74,9 @@ ui_endgameReturn = [[
     Label(text="> Меню <", pos=config.SCREEN_SIZE / 2 - Vector2(FONT_COMMON.size("> Меню <")) / 2 + Vector2(0, 30),
           color=(255, 0, 0), font=FONT_COMMON, LType=LTYPE_ENDGAME)
 ]]
-ui_taskCount = Label(text="0/" + str(config.MAX_TASKS),
-                     pos=Vector2(config.SCREEN_SIZE.x - FONT_COMMON.size("0/" + str(config.MAX_TASKS))[0] - 8,
+ui_taskCount = Label(text=str(taskCount) + "/" + str(config.MAX_TASKS),
+                     pos=Vector2(config.SCREEN_SIZE.x - FONT_COMMON.size(str(taskCount) + "/"
+                                                                         + str(config.MAX_TASKS))[0] - 8,
                                  32 + 4 + 4 + 7),
                      color=(255, 255, 255), font=FONT_COMMON)
 
@@ -183,7 +184,7 @@ def EndGame(newWindow=WINDOW_MAIN_MENU):
     npc.clear()
     HP = config.MAX_HP
     if taskCount != 0:
-        ui_taskCount.ChangeText("0/" + str(config.MAX_TASKS))
+        ui_taskCount.ChangeText(str(taskCount) + "/" + str(config.MAX_TASKS))
         taskCount = 0
     playerPos = Vector2(0, 0)
 
@@ -308,7 +309,9 @@ while runningGame:
                     if HP < config.MAX_HP:
                         HP += 1
                     taskCount += 1
-                    ui_taskCount.ChangeText(str(taskCount) + "/" + str(config.MAX_TASKS))
+                    newText = str(taskCount) + "/" + str(config.MAX_TASKS)
+                    ui_taskCount.ChangeText(newText)
+                    ui_taskCount.pos = Vector2(config.SCREEN_SIZE.x - FONT_COMMON.size(newText)[0] - 8, 32 + 4 + 4 + 7)
                 elif questionGiver == QGIVER_NPC and not correct:
                     HP -= 1
                 questionGiver = QGIVER_NONE

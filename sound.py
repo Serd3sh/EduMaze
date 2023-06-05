@@ -27,7 +27,7 @@ VOL_MUSIC = 0
 VOL_SOUND = 1
 
 # загрузка сохраненных значений
-settingsSavedArray = array('f')
+settingsSavedArray = array('d')
 if not exists("settings.bin") or stat("settings.bin").st_size == 0:
     settingsSavedArray.append(1.0)
     settingsSavedArray.append(1.0)
