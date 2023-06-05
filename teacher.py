@@ -5,10 +5,13 @@ import render
 import config
 from renderProxy import *
 from random import randint
-from maze import GetDirections, CID_ROAD
+from maze import GetDirections, CID_ROAD, MazeField
 
 
 class Teacher:
+    """
+    Класс с самим NPC
+    """
     pos: Vector2 = None  # позиция NPC
     prevPos: Vector2 = None  # предыдущая позиция NPC
     field = None  # массив с лабиринтом
@@ -19,6 +22,10 @@ class Teacher:
     # Второй - её возможные пути для посещения, в которых NPC еще не был
 
     def __init__(self, field, spawnPos):
+        """
+        :param MazeField field: Массив с лабиринтом, по которому будет ходить NPC
+        :param Vector2 spawnPos: Начальная позиция, где разместить NPC
+        """
         self.pos = spawnPos
         self.field = field
 
@@ -56,10 +63,10 @@ class Teacher:
             direction = self.forkData[1][randint(0, len(self.forkData[1]) - 1)]
             self.forkData[1].remove(direction)
         else:
-            # дваложка. Это коридор, развилок нет
+            # это коридор, развилок нет
             direction = directions[randint(0, len(directions) - 1)]
 
-        # оч сложна. Двигаемся по тому, что определили
+        # двигаемся по тому, что определили
         self.prevPos = self.pos
         self.pos = self.pos + direction
 

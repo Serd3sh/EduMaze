@@ -25,17 +25,26 @@ LTYPE_PAUSE = 3
 LTYPE_ENDGAME = 4
 
 
+# дополнение вектора для возможности представить его как хеш
+# необходимо для ориентации координат в пространстве лабиринта (field[Vector2(x, y)])
 class Vector2(pygame.math.Vector2):
     def __hash__(self):
         return hash((self.x, self.y))
 
 
 class Texture:
+    """
+    Класс для реализации текстуры
+    """
     size: Vector2 = None
     file: str = None
     surface: pygame.surface.Surface = None
 
     def __init__(self, file: str, size: Vector2 = defaultCellSize):
+        """
+        :param file: Файл с текстурой
+        :param size: Конечный размер текстуры. По умолчанию использует данные из конфигурации
+        """
         self.file = file
         self.size = size
         if size == Vector2(0, 0):
@@ -44,9 +53,18 @@ class Texture:
             self.surface = pygame.transform.scale(pygame.image.load(file), size)
 
     def Render(self, dest: Vector2):
+        """
+        Отображает текстуру без обновления содержимого на экране
+        :param dest: Координата, куда наносится текстура
+        """
         surface.blit(self.surface, dest)
 
     def SetFile(self, newFile: str, newSize: Optional[Vector2] = None):
+        """
+        Изменить файл текстуры
+        :param newFile: Новый файл с текстурой
+        :param newSize: Новый размер. По умолчанию используется старый размер
+        """
         self.file = newFile
         if newSize is not None:
             self.size = newSize

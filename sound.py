@@ -22,7 +22,7 @@ SOUND_Q_CORRECT = pygame.mixer.Sound("assets/sounds/Right answer.wav")
 SOUND_Q_INCORRECT = pygame.mixer.Sound("assets/sounds/Wrong answer.wav")
 SOUND_EXIT = pygame.mixer.Sound("assets/sounds/Exit.mp3")
 
-# константы при обращении из вне
+# коды типа звуков
 VOL_MUSIC = 0
 VOL_SOUND = 1
 

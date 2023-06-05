@@ -41,7 +41,7 @@ taskCount = 0  # текущее кол-во сданных работ у игр�
 # переменные без значений по умолчанию(None, пустые массивы)
 prevWindow: Optional[int] = None  # предыдущее активное окно
 currentQuestion: Optional[str] = None  # текущая формулировка вопроса(идентификация при рендере и ответе на вопрос)
-npc: [Optional[teacher.Teacher]] = []
+npc: [Optional[teacher.Teacher]] = []  # массив со всеми NPC
 mousePos: Optional[tuple[int, int]] = None  # позиция мыши для вычислений
 hoverButton: Optional[list[Label]] = None  # текущая кнопка, на которой находится мышь
 prevHoverButton: Optional[list[Label]] = None  # предыдущая кнопка, на которой находилась мышь
@@ -174,7 +174,7 @@ def ClearScreen():
 def EndGame(newWindow=WINDOW_MAIN_MENU):
     """
     Завершение игры с выходом в указанное меню
-    :param int newWindow: Целевое окно после завершения игры. По умолчанию главно меню
+    :param int newWindow: Целевое окно после завершения игры. По умолчанию главное меню
     """
     global HP, taskCount, playerPos
     ChangeWindow(newWindow)
@@ -196,10 +196,11 @@ while runningGame:
     if frames > 10000:
         frames = 0
 
-    # демонстрация вопроса и пауза игры
+    # демонстрация вопроса, если игрок встретил NPC
     for bot in npc:
         if bot.pos == playerPos and not peaceMode:
             peaceMode = True
+            peaceFrames = 0
             ChangeWindow(WINDOW_QUESTION)
             questionGiver = QGIVER_NPC
             break
@@ -246,11 +247,11 @@ while runningGame:
 
     # контроль нажатия кнопок
     for ev in pygame.event.get():
-        # сигнал закрытия окна через Х
+        # сигнал закрытия окна через Х в правом верхнем углу окна
         if ev.type == pygame.QUIT:
             runningGame = False
             break
-        # контроль нажатия мыши в меню
+        # контроль нажатия мыши на кнопках интерфейса
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == pygame.BUTTON_LEFT:
             if hoverButton is None:
                 continue
@@ -324,7 +325,7 @@ while runningGame:
             continue
 
         sound.ChangeMusic(sound.MUSIC_GAME)
-        # считываем только нажатые кнопки
+        # считываем только нажатые кнопки клавиатуры
         if ev.type != pygame.KEYDOWN:
             continue
 
@@ -357,7 +358,7 @@ while runningGame:
         if maze.IsCellRoadType(render.field[checkPos][maze.CELL_ID]) or not config.COLLISIONS:
             playerPos = checkPos
 
-    # далее - рендер текстур лабиринта. Если это меню, дальше идти не стоит
+    # далее - рендер текстур лабиринта
     if currentWindow != WINDOW_GAME:
         continue
 
@@ -369,10 +370,12 @@ while runningGame:
     # встреча со столом с работами
     if render.field[playerPos][maze.CELL_ID] == maze.CID_PAPER_TABLE:
         peaceMode = True
+        peaceFrames = 0
         ChangeWindow(WINDOW_QUESTION)
         questionGiver = QGIVER_PAPERS
         render.field[playerPos][maze.CELL_ID] = maze.CID_TABLE
         render.field[playerPos][maze.CELL_OBJ] = render.GetRandom("table", render.field[playerPos][maze.CELL_RAND])
+        continue
 
     # контроль выхода
     if render.field[playerPos][maze.CELL_ID] == maze.CID_EXIT:
@@ -394,7 +397,7 @@ while runningGame:
 
     # передвижение и рендер преподов
     for bot in npc:
-        if frames % config.NPC_WALKSPEED == 0:  # каждый 5 кадр двигать препода
+        if frames % config.NPC_WALKSPEED == 0:  # каждый NPC_WALKSPEED кадр двигать препода
             bot.Move()
         if not render.field[bot.pos][maze.CELL_FOG]:
             bot.Render(playerPos, frames)

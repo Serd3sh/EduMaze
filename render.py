@@ -12,7 +12,7 @@ from maze import CELL_ID, CELL_OBJ, CELL_RAND, CELL_FOG, DIRECTIONS, CID_EXIT, C
 
 pygame.display.init()
 surface = renderProxy.surface = pygame.display.set_mode(config.SCREEN_SIZE)
-pygame.display.set_caption("Maze")
+pygame.display.set_caption("Побег студента")
 
 
 def RenderAnimated(img, frame, pos):

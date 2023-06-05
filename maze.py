@@ -159,6 +159,7 @@ def GenerateMaze(field_size) -> MazeField:
                 else:
                     cell[CELL_ID] = CID_TABLE
                 cellsWithTable.append(Vector2(x, y))
+
     print(f"Interactive tables: {paperTableCount-1}/{tableCount}({int((paperTableCount-1)/tableCount*100)}%)")
     # внешние границы лабиринта
     for x in range(-1, int(field_size.x)+1):
